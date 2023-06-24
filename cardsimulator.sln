@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32602.291
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "cardsimulator", "cardsimulator\cardsimulator.pyproj", "{69303B71-B6E2-4978-A718-500E0A728690}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{69303B71-B6E2-4978-A718-500E0A728690}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69303B71-B6E2-4978-A718-500E0A728690}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {950367B6-8EA8-499A-B98D-3C3D54C12827}
+	EndGlobalSection
+EndGlobal
