@@ -9,19 +9,47 @@ import os
 import re
 import random
 import copy
+from pathlib import Path
+import sys
+
+
+
+#this version is 0.0.5
+
+#更新記録
+#v0.0.1 基礎部分を設計
+#v0.0.2 転醒部分を実装
+#v0.0.3 デッキに戻す部分を実装
+#v0.0.4 極軽減、全軽減に適応
+#v0.0.5 入力部が不親切だったので改定
+
+
+
+##----------------------------------------------------------------------------------------------
+##ここからコード↓
 
 CARD_WIDTH = 105
 CARD_HEIGHT = 153
 BUTTON_WIDTH = 105
 BUTTON_HEIGHT = 31
 
-#this version is 0.0.1
+#pyinstaller用の関数
+# アクセスしたいファイル名(同フォルダ内)を引数に渡すと絶対パスを返す
+def find_data_file(filename):
+   if getattr(sys, "frozen", False):
+       # The application is frozen
+       datadir = os.path.dirname(sys.executable)
+   else:
+       # The application is not frozen
+       # Change this bit to match where you store your data files:
+       datadir = os.path.dirname(__file__)
+   return os.path.join(datadir, filename)
 
-#関数など
+#外部処理関数
 def contenthtml(url):
     html = requests.get(url)
     return BeautifulSoup(html.content, "html.parser")
-    print ("contenthtml END")
+    #print ("contenthtml END")
 
 def searchcardlist(name,cash):
     contentnumber = 0
@@ -31,7 +59,7 @@ def searchcardlist(name,cash):
         else:
             contentnumber+=1
     return -1
-    print ("searchcardlist END")
+    #print ("searchcardlist END")
 
 def reductionarray(detail):
     colorsum = []
@@ -50,28 +78,32 @@ def reductionarray(detail):
                 colorsum.append("黄")
             elif('blue' in color):
                 colorsum.append("青")
+            elif('ultimate' in color):
+                colorsum.append("極")
+            elif('all' in color):
+                colorsum.append("全")
             else:
                 colorsum = []
     except:
         colorsum = []
     return colorsum
-    print ("reductionarray END")
+    #print ("reductionarray END")
 
 def createarray(content,number,array):
     img = content.find(True, attrs={ 'class': 'set' }).find(True, attrs={ 'class': 'img' }).find('img')
     laterurl = img.get('src')
     imgurl = "https://club.battlespirits.com" + laterurl
     try:
-        with open(str('./cardcash/')+number+str('.jpg'),'wb') as file:
+        with open(find_data_file(str('./cardcash/')+number+str('.jpg')),'wb') as file:
             file.write(requests.get(imgurl).content)
     except OSError as e:
-        os.mkdir('./cardcash')
-        with open(str('./cardcash/')+number+str('.jpg'),'wb') as file:
+        os.mkdir(find_data_file('./cardcash'))
+        with open(find_data_file(str('./cardcash/')+number+str('.jpg')),'wb') as file:
             file.write(requests.get(imgurl).content)
     finally:
-        imgjpg = Image.open(str('./cardcash/')+number+str('.jpg'))
-        imgjpg.save(str('./cardcash/')+number+str('.png'))
-        os.remove(str('./cardcash/')+number+str('.jpg'))
+        imgjpg = Image.open(find_data_file(str('./cardcash/')+number+str('.jpg')))
+        imgjpg.save(find_data_file(str('./cardcash/')+number+str('.png')))
+        os.remove(find_data_file(str('./cardcash/')+number+str('.jpg')))
     array.append(number)
     array.append(content.find(True,attrs={ 'class': 'name' }).text)
     for detail in content.find(True,attrs={ 'class': 'data' }).find_all(True,attrs={ 'class': 'txt' }):
@@ -90,7 +122,7 @@ def createarray(content,number,array):
             i.replace_with('\n')
         text += detailtext.text.replace(' ', '').replace('\r', '')+'\n'
     array.append(text)
-    print ("createarray END")
+    #print ("createarray END")
     
 def stragecash(contents,cashlist,both):
     cardnum = searchcardlist(contents[0],cashlist)
@@ -110,7 +142,7 @@ def stragecash(contents,cashlist,both):
             card.append(False)
         cashlist.append(card)
     return cashlist[cardnum][0]
-    print ("stragecash END")
+    #print ("stragecash END")
 
 def batospibu(deck,cashedcardlist,deckurl):
     deck = []
@@ -129,13 +161,13 @@ def batospibu(deck,cashedcardlist,deckurl):
         cardnum.append(card.find(True,attrs={ 'class': 'cardCount' }).text)
         deck.append(cardnum)
     return deck
-    print ("batosupibu END")
+    #print ("batosupibu END")
 
 def deckcreate():
 #デッキリスト取得
     global decklist,cashedcardlist
     try:
-        with open('./cardcash/deck.pkl',mode='rb') as f:
+        with open(find_data_file('./cardcash/deck.pkl'),mode='rb') as f:
             decklist = pickle.load(f)
     except OSError as e:
         print(e)
@@ -144,7 +176,7 @@ def deckcreate():
 
 #キャッシュ済みカードリスト取得
     try:
-        with open('./cardcash/cash.pkl',mode='rb') as f:
+        with open(find_data_file('./cardcash/cash.pkl'),mode='rb') as f:
             cashedcardlist = pickle.load(f)
     except OSError as e:
         print(e)
@@ -176,27 +208,34 @@ def deckcreate():
         deck = decklist[select-1]
 #バトスピ部のデッキ解析
     else:
+        print ("バトスピ部のデッキurlを入力してください")
         deckurl = input (">>")
-#"https://club.battlespirits.com/bsclub/mydeck/decksrc/202306/11686894944337_20230616.html"
-#https://club.battlespirits.com/bsclub/mydeck/decksrc/202306/11687096911622_20230618.html
         deck = batospibu([],cashedcardlist,deckurl)
         decklist.append(deck)
 #キャッシュ保存
-        with open('./cardcash/cash.pkl','wb') as file:
+        with open(find_data_file('./cardcash/cash.pkl'),'wb') as file:
             pickle.dump(cashedcardlist, file)
 #デッキ保存
-        with open('./cardcash/deck.pkl','wb') as file:
+        with open(find_data_file('./cardcash/deck.pkl'),'wb') as file:
             pickle.dump(decklist, file)
-    print ("deckcreate END")
+    #print ("deckcreate END")
     deckcopy = copy.copy(deck)
     deckcopy.pop(0)
     return deckcopy
+
+def sampleImageCreate():
+    # 画像のファイル保存
+    img = Image.new("L", (CARD_WIDTH, CARD_HEIGHT), 255)
+    # 画像のファイル保存
+    img.save(find_data_file("./cardcash/sample.png"))
 
 
 
 #コントローラークラス
 class Contraller(tk.Frame):
     def __init__(self,master=None):
+        self.decksource = deckcreate()
+        
         super().__init__(master)
         self.master.geometry("1260x918")
         self.master.title("batspi_simulator v0.0.1")
@@ -207,6 +246,7 @@ class Contraller(tk.Frame):
         self.images = []
         self.deck = []
         self.hand = []
+        self.open = []
         self.trash = []
         self.field =[]
         self.engagesprit = False
@@ -221,10 +261,12 @@ class Contraller(tk.Frame):
         self.layoutSet() # ボタンを並べる+初期化
 
 #関数群
+
+#キャンバス作成系列
     def createWidgets(self):
         '''アプリに必要なウィジェットを作成する'''
         
-        print ("createWidgets start")
+        #print ("createWidgets start")
         self.canvas = tk.Canvas(
             self.master,
             width=self.width,
@@ -233,11 +275,26 @@ class Contraller(tk.Frame):
             highlightthickness=0
         )
         self.canvas.pack()
-        print ("createWidgets END")
+        #print ("createWidgets END")
 
+
+#ボタンを並べる+初期化系列
     def layoutSet(self):
         #デッキ画像を用意
         self.canvas.create_rectangle(CARD_WIDTH*11, 0, CARD_WIDTH*12, CARD_HEIGHT,fill="blue")
+        #コアを用意
+        self.coreSet()
+        #詳細欄表示
+        sampleImageCreate()
+        self.canvas.create_rectangle(0, 0, CARD_WIDTH*2, CARD_HEIGHT*6-BUTTON_HEIGHT*2,fill="#aaaaaa")
+        self.detailimg = tk.PhotoImage(file=find_data_file("./cardcash/sample.png"), width=CARD_WIDTH, height=CARD_HEIGHT)
+        self.canvas.create_image(CARD_WIDTH/2, 0,image = self.detailimg, anchor = tk.NW)
+        self.message =  self.canvas.create_text(CARD_WIDTH, CARD_HEIGHT+(CARD_HEIGHT*5-BUTTON_HEIGHT)/2,text="",width = 200,tag = "text")
+        #ボタンを用意
+        self.buttonSet()
+        #print ("layoutset END")
+
+    def coreSet(self):
         #コアを用意
         for i in range(4):
             for j in range(8):
@@ -245,11 +302,9 @@ class Contraller(tk.Frame):
         self.core.append(self.canvas.create_oval(CARD_WIDTH*2,CARD_HEIGHT-10,CARD_WIDTH*2+20,CARD_HEIGHT+10,fill="red",tag="core"))
         self.canvas.tag_bind("core","<ButtonPress-1>", self.clickCore)
         self.canvas.tag_bind("core","<B1-Motion>", self.dragCore)
-        #詳細欄表示
-        self.canvas.create_rectangle(0, 0, CARD_WIDTH*2, CARD_HEIGHT*6-BUTTON_HEIGHT*2,fill="#aaaaaa")
-        self.detailimg = tk.PhotoImage(file="./cardcash/sample.png", width=CARD_WIDTH, height=CARD_HEIGHT)
-        self.canvas.create_image(CARD_WIDTH/2, 0,image = self.detailimg, anchor = tk.NW)
-        self.message =  self.canvas.create_text(CARD_WIDTH, CARD_HEIGHT+(CARD_HEIGHT*5-BUTTON_HEIGHT)/2,text="",width = 200,tag = "text")
+        #print ("coreset END")
+
+    def buttonSet(self):
         #ボタンを用意
         self.buttontop = self.canvas.create_rectangle(CARD_WIDTH*11,CARD_HEIGHT,CARD_WIDTH*11+BUTTON_WIDTH,CARD_HEIGHT+BUTTON_HEIGHT,fill="#aaaaaa",tag="buttontop")
         self.canvas.create_text(CARD_WIDTH*11+BUTTON_WIDTH/2, CARD_HEIGHT+BUTTON_HEIGHT/2, text = "上からドロー",tag="buttontop")
@@ -269,10 +324,22 @@ class Contraller(tk.Frame):
         self.buttonrev = self.canvas.create_rectangle(BUTTON_WIDTH,CARD_HEIGHT*6-BUTTON_HEIGHT*2,BUTTON_WIDTH*2,CARD_HEIGHT*6-BUTTON_HEIGHT,fill="#aaaaaa",tag="buttonreverse")
         self.canvas.create_text(BUTTON_WIDTH*3/2,CARD_HEIGHT*6-BUTTON_HEIGHT*3/2,text = "裏返す",tag="buttonreverse")
         self.canvas.tag_bind("buttonreverse","<ButtonPress-1>", self.reverseCard)
-        print ("layoutset END")
+        #print ("buttonSet END")
 
+    def detailReset(self):
+        #詳細欄の初期化
+        sampleImageCreate()
+        self.detailimg.config(file=find_data_file("./cardcash/sample.png"))
+        detailtext=""
+        self.canvas.itemconfig(self.message,text=detailtext)
+        self.card_fig_id = 0
+        self.card_core_id = 0
+        #print ("detailReset END")
+   
+
+# カードを作成系列
     def createCards(self):
-        for card in deckcreate():
+        for card in self.decksource:
             if not type(card) == 'int':
                 for index in range(int(re.search(r'\d+', card[1]).group())):
                     self.deck.append(card[0])
@@ -281,7 +348,7 @@ class Contraller(tk.Frame):
                         self.get_card_bottom() 
                         self.engagesprit = True
         self.cardDist()
-        print ("createCards END")
+        #print ("createCards END")
 
     def cardDist(self):
         self.shuffle()
@@ -289,14 +356,19 @@ class Contraller(tk.Frame):
             self.get_card_top() 
         if not self.engagesprit:
             self.get_card_top ()
-        print ("cardDist END")
+        #print ("cardDist END")
 
     def layoutCards(self,contents):
         '''カードをキャンバス上に並べる'''
 
         content = cashedcardlist[searchcardlist(contents,cashedcardlist)]
+        self.appearCards(content)
+        return content
+
+    def appearCards(self,content):
+        '''カードをキャンバス上に並べる'''
         # 画像を描画
-        fig = tk.PhotoImage(file="./cardcash/"+content[1]+".png")
+        fig = tk.PhotoImage(file=find_data_file("./cardcash/"+content[1]+".png"))
         self.images.append(fig)
         figid = self.canvas.create_image(CARD_WIDTH*3+random.randrange(-10,10,1), CARD_HEIGHT*4+random.randrange(-10,10,1),tag="card",image = fig)
 
@@ -306,9 +378,10 @@ class Contraller(tk.Frame):
         self.canvas.tag_bind("card","<B1-Motion>", self.dragCard)
 
         #tagをnumberに変更
-        print ("layoutCards END")
-        return content
+        #print ("layoutCards END")
+        return
 
+#イベント系統の関数
     def selectCard(self, event):
         '''選択されたカードに対する処理'''
 
@@ -320,7 +393,7 @@ class Contraller(tk.Frame):
         for check in self.field:
             if(check[0] == self.card_fig_id):
         #詳細欄の更新
-                self.detailimg.config(file="./cardcash/"+check[1][1]+".png")
+                self.detailimg.config(file=find_data_file("./cardcash/"+check[1][1]+".png"))
                 detailtext=""
                 for i in range(9):
                     if i == 5:
@@ -334,7 +407,7 @@ class Contraller(tk.Frame):
         # マウスの座標を記憶
         self.before_x = x
         self.before_y = y
-        print ("select END")
+        #print ("select END")
 
     def dragCard(self,event):
         x = event.x
@@ -362,72 +435,91 @@ class Contraller(tk.Frame):
         # マウスの座標を記憶
         self.before_x = x
         self.before_y = y
-        print ("select END")
+        #print ("select END")
 
     def dragCore(self,event):
         x = event.x
         y = event.y
-
         # 前回からのマウスの移動量の分だけ図形も移動
         self.canvas.move(
             self.card_core_id,
             x - self.before_x, y - self.before_y
         )
-
         # マウスの座標を記憶
         self.before_x = x
         self.before_y = y
 
     def get_card_top(self,event = 0):
+        #上から引く
         if len(self.deck) == 0:
             return
         self.hand.append(self.layoutCards(self.deck.pop(0)))
-        print ("getcardtop END")
+        #print ("getcardtop END")
         
     def get_card_bottom(self,event = 0):
+        #下から引く
         if len(self.deck) == 0:
             return
         self.hand.append(self.layoutCards(self.deck.pop(-1)))
-        print ("getcardbottom END")
+        #print ("getcardbottom END")
+
+    def back_card_top(self,event = 0):
+        #上に戻す
+        if len(self.field) == 0:
+            return
+        for check in self.field:
+            if(check[0] == self.card_fig_id):
+                self.deck.insert(0,check[1][0])
+                self.field.remove(check)
+                self.canvas.delete(check[0])
+                self.detailReset()
+                break
+        #print ("backcardtop END")
+        
+    def back_card_bottom(self,event = 0):
+        #下に戻す
+        if len(self.field) == 0:
+            return
+        for check in self.field:
+            if(check[0] == self.card_fig_id):
+                self.deck.append(check[1][0])
+                self.field.remove(check)
+                self.canvas.delete(check[0])
+                self.detailReset()
+                break
+        #print ("backcardbottom END")
 
     def reverseCard(self,event = 0):
+        #転醒(裏返し)処理
         for check in self.field:
             if(check[0] == self.card_fig_id):
                 if check[1][10]:
                     for i in range(9):
-                        check[1].insert(i+1,content[i+11])
+                        check[1].insert(i+1,check[1][2*i+11])
                     check[1].insert(10,True)
                     del check[1][20:]
-                    fig = tk.PhotoImage(file="./cardcash/"+content[1]+".png")
+                    fig = tk.PhotoImage(file=find_data_file("./cardcash/"+check[1][1]+".png"))
                     self.images.append(fig)
-                    self.canvas.itemconfig(self.card_fig_id,img = fig)
+                    self.canvas.itemconfigure(check[0],image = fig)
                 break
 
     def shuffle(self):
+        #シャッフル
         random.shuffle(self.deck)
-        print ("shuffle END")
+        #print ("shuffle END")
 
     def reset(self,event = 0):
+        #振り分け直し
         self.engagesprit = False
         self.canvas.delete("card")
+        self.deck.clear()
         self.field.clear()
-        for hands in self.hand:
-            self.deck.append(hands[0])
-            if not self.engagesprit and hands[3] == "契約スピリット":
-                self.get_card_bottom() 
-                self.engagesprit = True
         self.hand.clear()
-        if self.engagesprit:
-            self.hand.append(self.field[0][1])
         self.canvas.delete("core")
-        for i in range(4):
-            for j in range(8):
-                self.core.append(self.canvas.create_oval(CARD_WIDTH*2+i*20,CARD_HEIGHT+10+j*20,CARD_WIDTH*2+i*20+20,CARD_HEIGHT+10+j*20+20,fill="blue",tag="core"))
-        self.core.append(self.canvas.create_oval(CARD_WIDTH*2,CARD_HEIGHT-10,CARD_WIDTH*2+20,CARD_HEIGHT+10,fill="red",tag="core"))
-        self.canvas.tag_bind("core","<ButtonPress-1>", self.clickCore)
-        self.canvas.tag_bind("core","<B1-Motion>", self.dragCard)
-        self.cardDist()
-
+        self.detailReset()
+        self.coreSet()
+        self.createCards()
+        #print ("reset END")
 
 
 #以降未使用関数
@@ -443,17 +535,6 @@ class Contraller(tk.Frame):
         for index in range(card_num):
             self.card_list.append(self.deck[len(self.deck)-1-index])
         
-    def back_card_top(self,event = 0):
-        if False:
-            if len(self.deck) == 0:
-                return
-            self.deck.insert(0,self.hand.pop(0))
-        
-    def back_card_bottom(self,event = 0):
-        if False:
-            if len(self.deck) == 0:
-                return
-            self.deck.append(self.hand.pop(0))
 
 #メイン関数
 def main():
@@ -470,5 +551,9 @@ if __name__ == '__main__':
 
 
 
-
+#カードデータスクレイピング用url
 #https://club.battlespirits.com/bsclub/mydeck/detail/?id=150937&info28=BS51
+
+#デッキデータスクレイピング用url
+#https://club.battlespirits.com/bsclub/mydeck/decksrc/202306/11686894944337_20230616.html
+#https://club.battlespirits.com/bsclub/mydeck/decksrc/202306/11687096911622_20230618.html
